@@ -1,65 +1,85 @@
-import React from 'react';
-import { StyleSheet, Text, View, Button, Pressable } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, Text, View, Pressable, Image, Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as MediaLibrary from 'expo-media-library';
 
-export default app
+export default function App() {
+  const [foto, setFoto] = useState(null);
 
-function app(){
+  async function tirarFotoESalvar() {
+    // 1. Permissão da câmera
+    const permissaoCamera = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permissaoCamera.granted) {
+      Alert.alert('Permissão negada', 'Precisamos de acesso à câmera.');
+      return;
+    }
 
-  async function abrirCamera() {
-    const permissao = await ImagePicker.requestCameraPermissionsAsync();
+    // 2. Permissão da galeria (true = só escrita, funciona melhor no Expo Go)
+    const permissaoGaleria = await MediaLibrary.requestPermissionsAsync(true);
+    if (!permissaoGaleria.granted) {
+      Alert.alert('Permissão negada', 'Precisamos de acesso à galeria para salvar a foto.');
+      return;
+    }
 
-    if (permissao.granted) {
-      await ImagePicker.launchCameraAsync();
-    } else {
-      alert("Acesso negado à câmera!");
+    // 3. Abre a câmera
+    const resultado = await ImagePicker.launchCameraAsync({
+      quality: 1,
+    });
+
+    // Usuário cancelou
+    if (resultado.canceled) {
+      return;
+    }
+
+    const uri = resultado.assets[0].uri;
+    setFoto(uri);
+
+    // 4. Salva a foto na galeria
+    try {
+      await MediaLibrary.saveToLibraryAsync(uri);
+      Alert.alert('Sucesso', 'Foto salva na galeria!');
+    } catch (erro) {
+      Alert.alert('Erro', 'Não foi possível salvar a foto.');
+      console.log(erro);
     }
   }
 
-  function alertaBotao(){
-    alert("BEM VINDO")
-  }
-
-  return(
+  return (
     <View style={estilos.tela}>
-      <Text>Teste</Text>
-      
-      <Button title='CLIQUE AQUI' color={'green'} onPress={alertaBotao} />
-      
-      <Pressable style={estilos.botao} onPress={alertaBotao}>
-        <Text style={estilos.textoBotao}>Clique aqui nesse jogo</Text>
-      </Pressable>
+      <Text style={estilos.titulo}>Câmera</Text>
 
-      {/* Botão personalizado para abrir a câmera */}
-      <Pressable style={estilos.botaoCamera} onPress={abrirCamera}>
+      <Pressable style={estilos.botaoCamera} onPress={tirarFotoESalvar}>
         <Text style={estilos.textoBotaoCamera}>Abrir Câmera</Text>
       </Pressable>
+
+      {foto && <Image source={{ uri: foto }} style={estilos.foto} />}
     </View>
-  )
+  );
 }
 
 const estilos = StyleSheet.create({
-  tela:{
+  tela: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10
+    gap: 15,
   },
-  botao:{
-    borderRadius: 10,
-    backgroundColor: 'red',
-    padding: 10
+  titulo: {
+    fontSize: 22,
+    fontWeight: 'bold',
   },
-  textoBotao:{
-    color: 'white'
-  },
-  botaoCamera:{
+  botaoCamera: {
     borderRadius: 10,
     backgroundColor: '#007AFF',
-    padding: 12
+    padding: 12,
   },
-  textoBotaoCamera:{
+  textoBotaoCamera: {
     color: 'white',
-    fontWeight: 'bold'
-  }
-})
+    fontWeight: 'bold',
+  },
+  foto: {
+    width: 250,
+    height: 350,
+    borderRadius: 10,
+  },
+});
